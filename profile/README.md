@@ -35,7 +35,7 @@ Cette organisation héberge l’ensemble des dépôts nécessaires au développe
 
 ## Liens utiles
 
-* Documentation Confluence : \[lien à insérer]
+* Documentation Confluence : [Confluence](https://devoirsitech.atlassian.net/wiki/spaces/DiversiTec/overview?homepageId=164124)
 * Fichier `CONTRIBUTING.md` dans chaque repo pour les règles de contribution
 * Docker Compose & environnements dans `devoirsitech-infra`
 
