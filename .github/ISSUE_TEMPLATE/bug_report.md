@@ -1,8 +1,10 @@
+---
 name: "Bug Report"
 about: Signaler un problème pour améliorer la qualité du projet
 title: "[BUG] Titre du bug"
 labels: ["bug", "needs-triage"]
 assignees: []
+---
 
 # Description
 Décrire le problème rencontré de manière claire et concise.

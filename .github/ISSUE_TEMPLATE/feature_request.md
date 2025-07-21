@@ -1,8 +1,10 @@
+---
 name: "Feature Request"
 about: Proposer une idée ou une amélioration pour le projet
 title: "[FEATURE] Titre de la fonctionnalité"
 labels: ["enhancement", "discussion"]
 assignees: []
+---
 
 # Contexte
 Quel problème ou besoin cette fonctionnalité doit-elle résoudre ?
