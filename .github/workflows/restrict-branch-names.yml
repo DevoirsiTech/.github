@@ -1,0 +1,19 @@
+name: Restrict branch names
+
+on:
+  create:
+    branches:
+      - '*'
+
+jobs:
+  restrict-branch-names:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch name
+        uses: tj-actions/branch-names@v8
+        id: branch-names
+      - name: Enforce branch naming convention
+        if: ${{ !startsWith(steps.branch-names.current_branch, 'feat/') && !startsWith(steps.branch-names.current_branch, 'fix/') && !startsWith(steps.branch-names.current_branch, 'hotfix/') }}
+        run: |
+          echo "Erreur : le nom de la branche doit commencer par feat/, fix/ ou hotfix/."
+          exit 1
