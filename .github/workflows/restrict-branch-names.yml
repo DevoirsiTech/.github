@@ -1,6 +1,8 @@
 name: Restrict branch names
 
 on:
+  workflow_call:
+    
   create:
     branches:
       - '*'
