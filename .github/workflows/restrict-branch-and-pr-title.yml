@@ -1,4 +1,4 @@
-name: Restrict branch names
+name: Restrict branch name and PR title
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ on:
   workflow_call:
 
 jobs:
-  check-branch-name:
+  check-branch-and-pr-title:
     runs-on: ubuntu-latest
     steps:
       - name: Vérifier le nom de la branche
@@ -31,3 +31,13 @@ jobs:
             exit 1
           fi
           echo "::notice::Le nom de la branche est valide."
+      - name: Vérifier que le titre de la PR correspond au nom de la branche
+        if: github.event_name == 'pull_request'
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          if [ "$PR_TITLE" != "$BRANCH_NAME" ]; then
+            echo "::error::Le titre de la PR doit être exactement le nom de la branche ($BRANCH_NAME). Titre trouvé : $PR_TITLE"
+            exit 1
+          fi
+          echo "::notice::Le titre de la PR correspond au nom de la branche."
