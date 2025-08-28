@@ -1,0 +1,43 @@
+name: Restrict branch name and PR title
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  create:
+    branches:
+      - '*'
+  workflow_call:
+
+jobs:
+  check-branch-and-pr-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier le nom de la branche
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BRANCH_NAME="${{ github.head_ref }}"
+          elif [[ "${{ github.event_name }}" == "create" ]]; then
+            BRANCH_NAME="${{ github.ref_name }}"
+          else
+            echo "::error::Événement non supporté : ${{ github.event_name }}"
+            exit 1
+          fi
+          echo "Branche détectée : $BRANCH_NAME"
+          # Regex : type/DVRT-XX: Titre du ticket (type = feat|fix|hotfix, XX = nombre)
+          if [[ ! "$BRANCH_NAME" =~ ^(feat|fix|hotfix)/DVRT-[0-9]+:.+$ ]]; then
+            echo "::error::Le nom de la branche doit respecter le format : type/DVRT-XX: Titre du ticket (ex: feat/DVRT-34: Titre de la feature)"
+            exit 1
+          fi
+          echo "::notice::Le nom de la branche est valide."
+      - name: Vérifier que le titre de la PR correspond au nom de la branche
+        if: github.event_name == 'pull_request'
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          if [ "$PR_TITLE" != "$BRANCH_NAME" ]; then
+            echo "::error::Le titre de la PR doit être exactement le nom de la branche ($BRANCH_NAME). Titre trouvé : $PR_TITLE"
+            exit 1
+          fi
+          echo "::notice::Le titre de la PR correspond au nom de la branche."
