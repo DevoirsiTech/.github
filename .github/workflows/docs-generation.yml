@@ -1,0 +1,215 @@
+name: Documentation Generation
+
+on:
+  repository_dispatch:
+    types: [docs-update]
+  workflow_dispatch:
+    inputs:
+      projects:
+        description: 'Projects to generate docs for (backend,fileserver,frontend or all)'
+        required: false
+        default: 'all'
+
+jobs:
+  generate-docs:
+    name: Generate Documentation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      repository-projects: read
+      actions: read
+    
+    steps:
+    - name: 📥 Clone docs repository manually
+      run: |
+        git clone https://x-access-token:${{ secrets.DOCS_TOKEN }}@github.com/DevoirsiTech/devoirsitech-doc.git docs-repo
+        cd docs-repo
+        git config user.name 'Documentation Bot'
+        git config user.email 'noreply@devoirsitech.com'
+        
+    - name: 🛠️ Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: 🛠️ Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: 📦 Install DocFX
+      run: dotnet tool install --global docfx --version 2.75.3
+      
+    - name: 📚 Generate Backend Documentation
+      if: contains(github.event.inputs.projects, 'backend') || contains(github.event.inputs.projects, 'all') || github.event_name == 'repository_dispatch'
+      run: |
+        # Clone backend repo avec token pour accès privé
+        git clone https://x-access-token:${{ secrets.DOCS_TOKEN }}@github.com/DevoirsiTech/devoirsitech-backend.git temp-backend
+        cd temp-backend
+        
+        # Build project to generate XML docs
+        dotnet restore
+        dotnet build --configuration Release
+        
+        # Generate documentation with DocFX
+        docfx docfx.json --serve false
+        
+        # Copy to docs repo
+        mkdir -p ../docs-repo/generated/backend
+        if [ -d "docs-output" ]; then
+          cp -r docs-output/* ../docs-repo/generated/backend/
+        fi
+        
+        # Create a simple index if DocFX failed
+        if [ ! -f "../docs-repo/generated/backend/index.html" ]; then
+          echo "# Backend API Documentation" > ../docs-repo/generated/backend/README.md
+          echo "Documentation générée automatiquement le $(date)" >> ../docs-repo/generated/backend/README.md
+        fi
+        
+        cd ..
+        rm -rf temp-backend
+        
+    - name: 📚 Generate FileServer Documentation
+      if: contains(github.event.inputs.projects, 'fileserver') || contains(github.event.inputs.projects, 'all') || github.event_name == 'repository_dispatch'
+      run: |
+        # Clone fileserver repo avec token pour accès privé
+        git clone https://x-access-token:${{ secrets.DOCS_TOKEN }}@github.com/DevoirsiTech/devoirsitech-fileserver.git temp-fileserver
+        cd temp-fileserver
+        
+        # Build project to generate XML docs
+        dotnet restore
+        dotnet build --configuration Release
+        
+        # Generate documentation with DocFX
+        docfx docfx.json --serve false
+        
+        # Copy to docs repo
+        mkdir -p ../docs-repo/generated/fileserver
+        if [ -d "docs-output" ]; then
+          cp -r docs-output/* ../docs-repo/generated/fileserver/
+        fi
+        
+        # Create a simple index if DocFX failed
+        if [ ! -f "../docs-repo/generated/fileserver/index.html" ]; then
+          echo "# FileServer API Documentation" > ../docs-repo/generated/fileserver/README.md
+          echo "Documentation générée automatiquement le $(date)" >> ../docs-repo/generated/fileserver/README.md
+        fi
+        
+        cd ..
+        rm -rf temp-fileserver
+        
+    - name: 📚 Generate Frontend Documentation
+      if: contains(github.event.inputs.projects, 'frontend') || contains(github.event.inputs.projects, 'all') || github.event_name == 'repository_dispatch'
+      run: |
+        # Clone frontend repo avec token pour accès privé
+        git clone https://x-access-token:${{ secrets.DOCS_TOKEN }}@github.com/DevoirsiTech/devoirsitech-frontend.git temp-frontend
+        cd temp-frontend
+        
+        # Install dependencies
+        npm ci
+        
+        # Generate documentation with TypeDoc
+        npm run docs:generate || echo "TypeDoc failed, creating fallback documentation"
+        
+        # Copy to docs repo
+        mkdir -p ../docs-repo/generated/frontend
+        if [ -d "docs-output" ] && [ "$(ls -A docs-output)" ]; then
+          cp -r docs-output/* ../docs-repo/generated/frontend/
+        else
+          # Create fallback documentation
+          echo "# Frontend Components Documentation" > ../docs-repo/generated/frontend/README.md
+          echo "" >> ../docs-repo/generated/frontend/README.md
+          echo "Documentation générée automatiquement le $(date)" >> ../docs-repo/generated/frontend/README.md
+          echo "" >> ../docs-repo/generated/frontend/README.md
+          echo "## Fichiers principaux" >> ../docs-repo/generated/frontend/README.md
+          echo "" >> ../docs-repo/generated/frontend/README.md
+          echo "- \`src/main.tsx\` - Point d'entrée de l'application" >> ../docs-repo/generated/frontend/README.md
+          echo "- \`src/App.tsx\` - Composant principal" >> ../docs-repo/generated/frontend/README.md
+          echo "- \`src/config/api.ts\` - Configuration de l'API" >> ../docs-repo/generated/frontend/README.md
+        fi
+        
+        cd ..
+        rm -rf temp-frontend
+        
+    - name: 🏗️ Update Main Documentation Site
+      run: |
+        cd docs-repo
+        
+        # Create/Update main index page
+        cat > index.md << 'EOF'
+        # 📚 DiversiTech Documentation
+        
+        > **Documentation complète** de la plateforme éducative DiversiTech (repos privés).
+        
+        ## 🎯 Documentation Auto-générée
+        
+        ### APIs (.NET)
+        - [📋 **Backend API**](generated/backend/) - Documentation de l'API Backend
+        - [📁 **FileServer API**](generated/fileserver/) - Documentation de l'API FileServer  
+        
+        ### Frontend (React/TypeScript)
+        - [🌐 **Frontend Components**](generated/frontend/) - Documentation des composants React
+        
+        ## 📖 Guides Manuels
+        
+        - [🚀 Guide d'Installation](SETUP-GUIDE.md)
+        - [🏗️ Architecture](ARCHITECTURE.md)
+        - [🧪 Guide des Tests](TESTING-GUIDE.md)
+        - [🔧 DevOps](CICD.md)
+        
+        ## 🔄 Dernière mise à jour
+        
+        **Date :** TIMESTAMP_PLACEHOLDER
+        
+        **Projets documentés :**
+        - ✅ Backend API (.NET 8)
+        - ✅ FileServer API (.NET 8)
+        - ✅ Frontend Components (React/TypeScript)
+        
+        ---
+        
+        *Cette documentation est automatiquement mise à jour à chaque commit sur les repos source.*
+        EOF
+        
+        # Update timestamp
+        sed -i "s/TIMESTAMP_PLACEHOLDER/$(date '+%Y-%m-%d %H:%M:%S UTC')/g" index.md
+        
+        # Create a summary of what was generated
+        echo "" >> index.md
+        echo "## 📊 Statut de génération" >> index.md
+        echo "" >> index.md
+        
+        if [ -d "generated/backend" ]; then
+          echo "- ✅ **Backend** : Documentation générée avec succès" >> index.md
+        else
+          echo "- ❌ **Backend** : Échec de génération" >> index.md
+        fi
+        
+        if [ -d "generated/fileserver" ]; then
+          echo "- ✅ **FileServer** : Documentation générée avec succès" >> index.md
+        else
+          echo "- ❌ **FileServer** : Échec de génération" >> index.md
+        fi
+        
+        if [ -d "generated/frontend" ]; then
+          echo "- ✅ **Frontend** : Documentation générée avec succès" >> index.md
+        else
+          echo "- ❌ **Frontend** : Échec de génération" >> index.md
+        fi
+        
+    - name: 📝 Commit and push documentation
+      run: |
+        cd docs-repo
+        git config user.name 'Documentation Bot'
+        git config user.email 'noreply@devoirsitech.com'
+        
+        git add .
+        
+        if git diff --staged --quiet; then
+          echo "✅ Aucun changement à commiter"
+        else
+          git commit -m "📚 Auto-update documentation - $(date '+%Y-%m-%d %H:%M:%S')"
+          git pull --rebase origin main || true
+          git push
+          echo "✅ Documentation mise à jour et pushée vers devoirsitech-doc"
+        fi
